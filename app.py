@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.figure_factory as ff
 
 # -------------------------------
 # Page setup
 # -------------------------------
-st.set_page_config(page_title="Lulu UAE Dashboard", layout="wide")
-st.title("🛍️ Lulu UAE Business Insights Dashboard")
+st.set_page_config(page_title="Lulu UAE Advanced Dashboard", layout="wide")
+st.title("🛍️ Lulu UAE Advanced Business Insights Dashboard")
 
 # -------------------------------
 # Load dataset
@@ -26,13 +27,13 @@ df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
 # Sidebar filters
 # -------------------------------
 st.sidebar.header("🔍 Filters")
-
 def get_column_options(col_name):
     return df[col_name].unique() if col_name in df.columns else []
 
 city = st.sidebar.multiselect("Select City", options=get_column_options("city"))
 brand = st.sidebar.multiselect("Select Brand", options=get_column_options("brand"))
 gender = st.sidebar.multiselect("Select Gender", options=get_column_options("gender"))
+department = st.sidebar.multiselect("Select Department", options=get_column_options("department"))
 
 # Apply filters
 filtered_df = df.copy()
@@ -42,6 +43,8 @@ if brand:
     filtered_df = filtered_df[filtered_df['brand'].isin(brand)]
 if gender:
     filtered_df = filtered_df[filtered_df['gender'].isin(gender)]
+if department:
+    filtered_df = filtered_df[filtered_df['department'].isin(department)]
 
 # -------------------------------
 # Key Performance Indicators
@@ -49,34 +52,70 @@ if gender:
 st.subheader("📊 Key Performance Indicators")
 col1, col2, col3 = st.columns(3)
 
-# Total Revenue
 total_revenue = filtered_df['tlv'].sum() if 'tlv' in filtered_df.columns else 0
 col1.metric("Total Revenue (AED)", f"{total_revenue:,.0f}")
 
-# Total Orders
 total_orders = filtered_df['order_id'].nunique() if 'order_id' in filtered_df.columns else 0
 col2.metric("Total Orders", f"{total_orders:,}")
 
-# Average Order Value
 avg_order_value = filtered_df['tlv'].mean() if 'tlv' in filtered_df.columns and not filtered_df.empty else 0
 col3.metric("Average Order Value", f"{avg_order_value:,.0f}")
 
 # -------------------------------
-# 1️⃣ Sales by Brand and Gender
+# 1️⃣ Top 10 SKUs by Revenue
 # -------------------------------
-if 'brand' in filtered_df.columns and 'tlv' in filtered_df.columns:
-    color_col = 'gender' if 'gender' in filtered_df.columns else None
-    st.subheader("🧍 Sales by Brand and Gender")
-    fig1 = px.bar(filtered_df, x="brand", y="tlv", color=color_col, barmode="group")
+if 'sku_id' in filtered_df.columns and 'tlv' in filtered_df.columns:
+    st.subheader("🏆 Top 10 SKUs by Revenue")
+    sku_sales = filtered_df.groupby("sku_id", as_index=False)["tlv"].sum().sort_values(by="tlv", ascending=False).head(10)
+    fig1 = px.bar(sku_sales, x="tlv", y="sku_id", orientation="h", title="Top 10 SKUs by Revenue", text="tlv")
     st.plotly_chart(fig1, use_container_width=True)
 
 # -------------------------------
-# 2️⃣ Promo Impact on Quantity
+# 2️⃣ Revenue by Brand & Department (Stacked)
 # -------------------------------
-if 'discount_percentage' in filtered_df.columns and 'quantity' in filtered_df.columns:
-    st.subheader("💸 Discount % vs Quantity Sold")
-    fig2 = px.scatter(
-        filtered_df,
-        x="discount_percentage",
-        y="quantity",
-        color="brand" if 'brand' in filtered_df.columns else None)
+if 'brand' in filtered_df.columns and 'department' in filtered_df.columns and 'tlv' in filtered_df.columns:
+    st.subheader("🏷️ Revenue by Brand and Department")
+    brand_dept = filtered_df.groupby(['brand','department'], as_index=False)['tlv'].sum()
+    fig2 = px.bar(brand_dept, x="brand", y="tlv", color="department", barmode="stack",
+                  title="Stacked Revenue: Brand vs Department")
+    st.plotly_chart(fig2, use_container_width=True)
+
+# -------------------------------
+# 3️⃣ Heatmap: City vs Hour of Day
+# -------------------------------
+if 'city' in filtered_df.columns and 'hour_of_day' in filtered_df.columns and 'tlv' in filtered_df.columns:
+    st.subheader("🌡️ City vs Hour of Day Revenue Heatmap")
+    heatmap_df = filtered_df.groupby(['city','hour_of_day'], as_index=False)['tlv'].sum()
+    heatmap_pivot = heatmap_df.pivot(index='city', columns='hour_of_day', values='tlv').fillna(0)
+    fig3 = ff.create_annotated_heatmap(
+        z=heatmap_pivot.values,
+        x=list(heatmap_pivot.columns),
+        y=list(heatmap_pivot.index),
+        colorscale='Viridis',
+        showscale=True
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+
+# -------------------------------
+# 4️⃣ Treemap: Revenue by Category and Brand
+# -------------------------------
+if 'category' in filtered_df.columns and 'brand' in filtered_df.columns and 'tlv' in filtered_df.columns:
+    st.subheader("📊 Revenue Treemap: Category & Brand")
+    fig4 = px.treemap(filtered_df, path=['brand','category'], values='tlv',
+                      color='tlv', color_continuous_scale='Viridis',
+                      title="Revenue Distribution by Brand and Category")
+    st.plotly_chart(fig4, use_container_width=True)
+
+# -------------------------------
+# 5️⃣ Discount % vs TLV per Brand with Trendline
+# -------------------------------
+if 'discount_percentage' in filtered_df.columns and 'tlv' in filtered_df.columns and 'brand' in filtered_df.columns:
+    st.subheader("💸 Discount % vs Revenue per Brand (Trendline)")
+    fig5 = px.scatter(filtered_df, x="discount_percentage", y="tlv", color="brand",
+                      trendline="ols", title="Impact of Discounts on Revenue by Brand")
+    st.plotly_chart(fig5, use_container_width=True)
+
+# -------------------------------
+# Footer
+# -------------------------------
+st.markdown("© 2025 Lulu UAE Insights | Developed by Rakshanda Dhote")
