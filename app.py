@@ -79,4 +79,4 @@ if 'discount_percentage' in filtered_df.columns and 'quantity' in filtered_df.co
         filtered_df,
         x="discount_percentage",
         y="quantity",
-        color="brand" if 'brand' in filtered_df.columns else None,
+        color="brand" if 'brand' in filtered_df.columns else None)
