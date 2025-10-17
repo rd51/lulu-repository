@@ -111,16 +111,62 @@ if 'category' in filtered_df.columns and 'brand' in filtered_df.columns and 'tlv
 # -------------------------------
 if 'discount_percentage' in filtered_df.columns and 'tlv' in filtered_df.columns and 'brand' in filtered_df.columns:
     st.subheader("💸 Discount % vs Revenue per Brand")
-    # Drop NaNs to avoid trendline errors
     scatter_df = filtered_df[['discount_percentage','tlv','brand']].dropna()
     try:
         fig5 = px.scatter(scatter_df, x="discount_percentage", y="tlv", color="brand",
                           trendline="ols", title="Impact of Discounts on Revenue by Brand")
-    except Exception as e:
-        # fallback if statsmodels not installed
+    except:
         fig5 = px.scatter(scatter_df, x="discount_percentage", y="tlv", color="brand",
                           title="Impact of Discounts on Revenue by Brand (trendline unavailable)")
     st.plotly_chart(fig5, use_container_width=True)
+
+# -------------------------------
+# 6️⃣ New: Stacked Bar – Region, Gender, Marketing
+# -------------------------------
+if 'region' in filtered_df.columns and 'gender' in filtered_df.columns and 'marketing' in filtered_df.columns:
+    st.subheader("📊 Revenue by Region, Gender, and Marketing Channel")
+    region_gender_marketing = filtered_df.groupby(['region','gender','marketing'], as_index=False)['tlv'].sum()
+    fig6 = px.bar(region_gender_marketing, x='region', y='tlv', color='gender',
+                  barmode='stack', facet_col='marketing',
+                  title="Stacked Revenue: Region vs Gender vs Marketing")
+    st.plotly_chart(fig6, use_container_width=True)
+
+# -------------------------------
+# 7️⃣ New: Trend Line – Month of Year
+# -------------------------------
+if 'order_date' in filtered_df.columns:
+    st.subheader("📈 Revenue Trend Across Months")
+    filtered_df['order_date'] = pd.to_datetime(filtered_df['order_date'], errors='coerce')
+    filtered_df['month'] = filtered_df['order_date'].dt.month
+    month_trend = filtered_df.groupby('month', as_index=False)['tlv'].sum()
+    fig7 = px.line(month_trend, x='month', y='tlv', markers=True,
+                   title="Monthly Revenue Trend",
+                   labels={'tlv': 'Revenue (AED)', 'month': 'Month'})
+    st.plotly_chart(fig7, use_container_width=True)
+
+# -------------------------------
+# 8️⃣ New: Pie Charts – Brand, Gender, Age
+# -------------------------------
+if 'brand' in filtered_df.columns and 'gender' in filtered_df.columns and 'age' in filtered_df.columns:
+    st.subheader("🥧 Revenue Distribution by Brand, Gender, and Age")
+    
+    # Brand Pie
+    brand_pie = filtered_df.groupby('brand', as_index=False)['tlv'].sum()
+    fig8 = px.pie(brand_pie, names='brand', values='tlv', title='Revenue Distribution by Brand')
+    st.plotly_chart(fig8, use_container_width=True)
+    
+    # Gender Pie
+    gender_pie = filtered_df.groupby('gender', as_index=False)['tlv'].sum()
+    fig9 = px.pie(gender_pie, names='gender', values='tlv', title='Revenue Distribution by Gender')
+    st.plotly_chart(fig9, use_container_width=True)
+    
+    # Age Pie
+    bins = [0, 18, 25, 35, 50, 100]
+    labels = ['<18','18-25','26-35','36-50','50+']
+    filtered_df['age_group'] = pd.cut(filtered_df['age'], bins=bins, labels=labels)
+    age_pie = filtered_df.groupby('age_group', as_index=False)['tlv'].sum()
+    fig10 = px.pie(age_pie, names='age_group', values='tlv', title='Revenue Distribution by Age Group')
+    st.plotly_chart(fig10, use_container_width=True)
 
 # -------------------------------
 # Footer
