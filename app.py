@@ -110,9 +110,16 @@ if 'category' in filtered_df.columns and 'brand' in filtered_df.columns and 'tlv
 # 5️⃣ Discount % vs TLV per Brand with Trendline
 # -------------------------------
 if 'discount_percentage' in filtered_df.columns and 'tlv' in filtered_df.columns and 'brand' in filtered_df.columns:
-    st.subheader("💸 Discount % vs Revenue per Brand (Trendline)")
-    fig5 = px.scatter(filtered_df, x="discount_percentage", y="tlv", color="brand",
-                      trendline="ols", title="Impact of Discounts on Revenue by Brand")
+    st.subheader("💸 Discount % vs Revenue per Brand")
+    # Drop NaNs to avoid trendline errors
+    scatter_df = filtered_df[['discount_percentage','tlv','brand']].dropna()
+    try:
+        fig5 = px.scatter(scatter_df, x="discount_percentage", y="tlv", color="brand",
+                          trendline="ols", title="Impact of Discounts on Revenue by Brand")
+    except Exception as e:
+        # fallback if statsmodels not installed
+        fig5 = px.scatter(scatter_df, x="discount_percentage", y="tlv", color="brand",
+                          title="Impact of Discounts on Revenue by Brand (trendline unavailable)")
     st.plotly_chart(fig5, use_container_width=True)
 
 # -------------------------------
